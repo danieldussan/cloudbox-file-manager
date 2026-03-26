@@ -40,7 +40,7 @@ export function RegisterPage() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     await mutateAsync({ username: values.username, password: values.password })
-    await navigate({ to: "/app/dashboard" })
+    await navigate({ to: "/dashboard" })
   })
 
   return (

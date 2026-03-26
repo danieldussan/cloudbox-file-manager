@@ -80,10 +80,13 @@ function formatDateTimeReadable(value: unknown): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return String(value)
 
+  const resolvedTimeZone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Bogota"
+
   return new Intl.DateTimeFormat("es-CO", {
     dateStyle: "full",
     timeStyle: "medium",
-    timeZone: "UTC",
+    timeZone: resolvedTimeZone,
   }).format(date)
 }
 

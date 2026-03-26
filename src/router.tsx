@@ -40,7 +40,7 @@ const registerRoute = createRoute({
 
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/app",
+  id: "app-layout",
   beforeLoad: () => {
     const token = useAuthStore.getState().token ?? getPersistedAuthToken()
     if (!token) {
@@ -73,7 +73,7 @@ const rootIndexRoute = createRoute({
   path: "/",
   beforeLoad: () => {
     const token = useAuthStore.getState().token ?? getPersistedAuthToken()
-    throw redirect({ to: token ? "/app/dashboard" : "/login" })
+    throw redirect({ to: token ? "/dashboard" : "/login" })
   },
 })
 

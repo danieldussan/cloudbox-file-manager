@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Filter, Upload } from "lucide-react"
+import { RotateCcw, Upload } from "lucide-react"
 import { useNavigate } from "@tanstack/react-router"
 
 import {
@@ -90,13 +90,13 @@ export function DashboardPage() {
               size="sm"
               onClick={() => filesQuery.refetch()}
             >
-              <Filter className="size-4" />
+              <RotateCcw className="size-4" />
               Actualizar
             </Button>
             <Button
               variant="default"
               size="sm"
-              onClick={() => void navigate({ to: "/app/upload" })}
+              onClick={() => void navigate({ to: "/upload" })}
             >
               <Upload className="size-4" />
               Subir

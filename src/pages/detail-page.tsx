@@ -16,7 +16,7 @@ const validProtocols: Protocol[] = ["S3", "FTP", "SMB", "NFS"]
 
 export function DetailPage() {
   const [query, setQuery] = useState("")
-  const { protocol } = useParams({ from: "/app/details/$protocol" })
+  const { protocol } = useParams({ from: "/app-layout/details/$protocol" })
   const normalized = (
     validProtocols.includes(protocol as Protocol) ? protocol : "S3"
   ) as Protocol

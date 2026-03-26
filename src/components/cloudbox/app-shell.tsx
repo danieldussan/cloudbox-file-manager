@@ -29,35 +29,35 @@ export function AppShell() {
         </div>
         <nav className="space-y-1 px-2">
           <NavItem
-            to="/app/dashboard"
+            to="/dashboard"
             icon={<LayoutDashboard className="size-4" />}
             label="Panel de Control"
           />
           <NavItem
-            to="/app/upload"
+            to="/upload"
             icon={<CloudUpload className="size-4" />}
             label="Subir Archivos"
           />
           <NavItem
-            to="/app/details/$protocol"
+            to="/details/$protocol"
             params={{ protocol: "FTP" }}
             icon={<Server className="size-4" />}
             label="FTP"
           />
           <NavItem
-            to="/app/details/$protocol"
+            to="/details/$protocol"
             params={{ protocol: "SMB" }}
             icon={<Database className="size-4" />}
             label="SMB"
           />
           <NavItem
-            to="/app/details/$protocol"
+            to="/details/$protocol"
             params={{ protocol: "NFS" }}
             icon={<Network className="size-4" />}
             label="NFS"
           />
           <NavItem
-            to="/app/details/$protocol"
+            to="/details/$protocol"
             params={{ protocol: "S3" }}
             icon={<FolderOpen className="size-4" />}
             label="S3"
@@ -102,7 +102,7 @@ export function AppShell() {
 }
 
 type NavItemProps = {
-  to: "/app/dashboard" | "/app/upload" | "/app/details/$protocol"
+  to: "/dashboard" | "/upload" | "/details/$protocol"
   label: string
   icon: ReactNode
   params?: { protocol: string }

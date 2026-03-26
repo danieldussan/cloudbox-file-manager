@@ -34,7 +34,7 @@ export function LoginPage() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     await mutateAsync(values)
-    await navigate({ to: "/app/dashboard" })
+    await navigate({ to: "/dashboard" })
   })
 
   return (
