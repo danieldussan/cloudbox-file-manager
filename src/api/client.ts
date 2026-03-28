@@ -92,6 +92,57 @@ function optionalString(value: unknown): string | null {
   return s.length > 0 ? s : null
 }
 
+/**
+ * ETag legible sin comillas envolventes (S3, weak ETag W/"…", comillas tipográficas).
+ * Usar al renderizar; también se aplica en el parser de la API.
+ */
+export function formatEtagForDisplay(raw: string | null | undefined): string {
+  if (raw == null) return ""
+  let s = String(raw).trim()
+  if (!s) return ""
+
+  const stripOneLayer = (input: string): string | null => {
+    const t = input.trim()
+    if (t.length < 2) return null
+    const a = t[0]
+    const b = t[t.length - 1]
+    const asciiDouble = a === '"' && b === '"'
+    const asciiSingle = a === "'" && b === "'"
+    const curly = a === "\u201c" && b === "\u201d"
+    if (!asciiDouble && !asciiSingle && !curly) return null
+    return t
+      .slice(1, -1)
+      .replaceAll('\\"', '"')
+      .replaceAll("\\'", "'")
+      .trim()
+  }
+
+  let peeled: string | null
+  while ((peeled = stripOneLayer(s)) !== null) {
+    s = peeled
+  }
+
+  s = s.replaceAll("&quot;", '"').replaceAll("&#34;", '"').trim()
+  while ((peeled = stripOneLayer(s)) !== null) {
+    s = peeled
+  }
+
+  if (/^W\//i.test(s)) {
+    const rest = s.slice(2).trim()
+    const inner = formatEtagForDisplay(rest)
+    return inner ? `W/${inner}` : "W/"
+  }
+
+  return s
+}
+
+function normalizeEtag(value: unknown): string | null {
+  const s = optionalString(value)
+  if (!s) return null
+  const out = formatEtagForDisplay(s)
+  return out.length > 0 ? out : null
+}
+
 function optionalBool(value: unknown): boolean | null {
   if (typeof value === "boolean") return value
   return null
@@ -170,7 +221,7 @@ function parseFilesResponse(raw: unknown): FilesByProtocol {
                 lastModifiedRaw: optionalString(lastMod),
                 extension: optionalString(r.extension),
                 mimeType: optionalString(r.mimeType),
-                etag: optionalString(r.etag),
+                etag: normalizeEtag(r.etag),
                 directory: optionalBool(r.directory),
                 bucketName: optionalString(r.bucketName),
                 storageClass: optionalString(r.storageClass),

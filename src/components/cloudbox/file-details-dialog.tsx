@@ -8,10 +8,12 @@ import {
 import { Button } from "@/components/ui/button"
 import {
   formatBytesToReadable,
+  formatEtagForDisplay,
   type FileRow,
   type Protocol,
 } from "@/api/client"
 import { ProtocolBadge } from "@/components/cloudbox/protocol-badge"
+import { useAuthStore } from "@/stores/auth-store"
 
 type FileDetailsDialogProps = {
   open: boolean
@@ -37,6 +39,8 @@ export function FileDetailsDialog({
   file,
   onDownload,
 }: FileDetailsDialogProps) {
+  const sessionUsername = useAuthStore((state) => state.username)
+
   const rows: { label: string; value: string }[] = file
     ? [
         { label: "Protocolo", value: file.protocol },
@@ -47,22 +51,20 @@ export function FileDetailsDialog({
     : []
 
   if (file) {
-    if (file.lastModifiedRaw) {
-      rows.push({
-        label: "Última modificación (ISO)",
-        value: file.lastModifiedRaw,
-      })
-    }
     if (file.extension) rows.push({ label: "Extensión", value: file.extension })
     if (file.mimeType) rows.push({ label: "Tipo MIME", value: file.mimeType })
-    if (file.etag) rows.push({ label: "ETag", value: file.etag })
+    {
+      const etagText = formatEtagForDisplay(file.etag)
+      if (etagText) rows.push({ label: "ETag", value: etagText })
+    }
     if (file.directory !== null && file.directory !== undefined) {
       rows.push({ label: "Es directorio", value: file.directory ? "Sí" : "No" })
     }
     if (file.bucketName) rows.push({ label: "Bucket", value: file.bucketName })
-    if (file.storageClass)
-      rows.push({ label: "Clase de almacenamiento", value: file.storageClass })
-    if (file.owner) rows.push({ label: "Propietario", value: file.owner })
+    rows.push({
+      label: "Propietario",
+      value: sessionUsername?.trim() || "—",
+    })
     if (file.group) rows.push({ label: "Grupo", value: file.group })
     if (file.creationTime)
       rows.push({ label: "Creación", value: file.creationTime })
@@ -81,7 +83,7 @@ export function FileDetailsDialog({
       {file ? (
         <DialogContent
           overlayClassName="bg-slate-950/55 backdrop-blur-md supports-backdrop-filter:backdrop-blur-md"
-          className="max-h-[85vh] overflow-y-auto border border-white/12 bg-[#0a1428]/88 text-slate-100 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl backdrop-saturate-150 sm:max-w-lg"
+          className="max-h-[85vh] overflow-y-auto border border-white/12 bg-[#0a1428]/88 text-slate-100 shadow-2xl ring-1 ring-white/10 backdrop-blur-xl backdrop-saturate-150 sm:max-w-2xl"
         >
           <DialogHeader>
             <DialogTitle className="pr-8 text-lg font-semibold tracking-tight text-white">
