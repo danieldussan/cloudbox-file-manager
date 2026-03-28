@@ -10,6 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import {
+  cloudboxToastError,
+  cloudboxToastSuccess,
+  cloudboxToastWarning,
+} from "@/lib/cloudbox-toast"
 
 export function UploadPage() {
   const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
@@ -51,10 +56,21 @@ export function UploadPage() {
 
     setActiveUploadFiles(selectedFiles)
 
-    await uploadMutation.mutateAsync({
-      files: selectedFiles,
-      protocols: selectedProtocols,
-    })
+    try {
+      await uploadMutation.mutateAsync({
+        files: selectedFiles,
+        protocols: selectedProtocols,
+      })
+      cloudboxToastSuccess(
+        "Archivos subidos",
+        "Los archivos se enviaron correctamente al backend."
+      )
+    } catch (error) {
+      cloudboxToastError(
+        "Error al subir",
+        error instanceof Error ? error.message : undefined
+      )
+    }
   }
 
   const selectFiles = (files: File[]) => {
@@ -67,6 +83,10 @@ export function UploadPage() {
       const names = invalidFiles.map((file) => file.name).join(", ")
       setFileValidationError(
         `Estos archivos superan 10MB y no se agregaron: ${names}`
+      )
+      cloudboxToastWarning(
+        "Archivos demasiado grandes",
+        `Superan 10MB y no se agregaron: ${names}`
       )
     } else {
       setFileValidationError(null)
@@ -154,7 +174,9 @@ export function UploadPage() {
               Máx. 10MB por archivo • PDF, JPG, PNG, ZIP, DOCX
             </p>
             <p className="mt-4 text-xs font-medium text-primary">
-              {isDragOver ? "Suelta los archivos para cargarlos" : "Haz clic o arrastra archivos"}
+              {isDragOver
+                ? "Suelta los archivos para cargarlos"
+                : "Haz clic o arrastra archivos"}
             </p>
             <input
               ref={fileInputRef}
@@ -168,7 +190,9 @@ export function UploadPage() {
             />
           </div>
           {fileValidationError && (
-            <p className="mt-3 text-xs text-destructive">{fileValidationError}</p>
+            <p className="mt-3 text-xs text-destructive">
+              {fileValidationError}
+            </p>
           )}
           {selectedFiles.length > 0 && (
             <div className="mt-4 rounded-xl border border-border/50 bg-surface-container-lowest p-3">
@@ -259,16 +283,6 @@ export function UploadPage() {
             Los archivos serán encriptados automáticamente mediante AES-256
             antes de la transferencia a los destinos seleccionados.
           </p>
-          {uploadMutation.error && (
-            <p className="text-xs text-destructive">
-              {uploadMutation.error.message}
-            </p>
-          )}
-          {uploadMutation.isSuccess && (
-            <p className="text-xs text-green-700">
-              Archivos subidos correctamente.
-            </p>
-          )}
           <Button
             className="w-full sm:w-auto"
             disabled={

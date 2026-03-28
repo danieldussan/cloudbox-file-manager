@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { cloudboxToastError } from "@/lib/cloudbox-toast"
 
 const schema = z.object({
   username: z.string().min(1, "El usuario es obligatorio"),
@@ -25,7 +26,7 @@ type FormValues = z.infer<typeof schema>
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const { mutateAsync, isPending, error } = useLoginMutation()
+  const { mutateAsync, isPending } = useLoginMutation()
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -33,8 +34,15 @@ export function LoginPage() {
   })
 
   const onSubmit = form.handleSubmit(async (values) => {
-    await mutateAsync(values)
-    await navigate({ to: "/dashboard" })
+    try {
+      await mutateAsync(values)
+      await navigate({ to: "/dashboard" })
+    } catch (error) {
+      cloudboxToastError(
+        "No se pudo iniciar sesión",
+        error instanceof Error ? error.message : undefined
+      )
+    }
   })
 
   return (
@@ -51,9 +59,7 @@ export function LoginPage() {
           <CardTitle className="text-center text-4xl font-extrabold">
             CloudBox
           </CardTitle>
-          <CardDescription>
-            Accede a tus archivos universitarios
-          </CardDescription>
+          <CardDescription>Accede a tus archivos</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={onSubmit}>
@@ -90,9 +96,6 @@ export function LoginPage() {
                 </p>
               )}
             </div>
-            {error && (
-              <p className="text-xs text-destructive">{error.message}</p>
-            )}
             <Button
               type="submit"
               className="w-full"

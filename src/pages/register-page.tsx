@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { cloudboxToastError } from "@/lib/cloudbox-toast"
 
 const schema = z
   .object({
@@ -31,7 +32,7 @@ type FormValues = z.infer<typeof schema>
 
 export function RegisterPage() {
   const navigate = useNavigate()
-  const { mutateAsync, isPending, error } = useRegisterMutation()
+  const { mutateAsync, isPending } = useRegisterMutation()
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -39,8 +40,18 @@ export function RegisterPage() {
   })
 
   const onSubmit = form.handleSubmit(async (values) => {
-    await mutateAsync({ username: values.username, password: values.password })
-    await navigate({ to: "/dashboard" })
+    try {
+      await mutateAsync({
+        username: values.username,
+        password: values.password,
+      })
+      await navigate({ to: "/dashboard" })
+    } catch (error) {
+      cloudboxToastError(
+        "No se pudo crear la cuenta",
+        error instanceof Error ? error.message : undefined
+      )
+    }
   })
 
   return (
@@ -111,9 +122,6 @@ export function RegisterPage() {
                 </p>
               )}
             </div>
-            {error && (
-              <p className="text-xs text-destructive">{error.message}</p>
-            )}
             <Button
               type="submit"
               className="w-full"

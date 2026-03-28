@@ -1,21 +1,39 @@
-import { useMemo } from "react"
-import { RotateCcw, Upload } from "lucide-react"
+import { useMemo, useState } from "react"
+import { RotateCcw, Search, Upload } from "lucide-react"
 import { useNavigate } from "@tanstack/react-router"
 
 import {
   downloadFileRequest,
   formatBytesToReadable,
+  type FileRow,
   type Protocol,
 } from "@/api/client"
 import { useFilesQuery, useProtocolsQuery } from "@/api/hooks"
+import { FileDetailsDialog } from "@/components/cloudbox/file-details-dialog"
 import { FilesDataTable } from "@/components/cloudbox/files-data-table"
 import { RecentFileItem } from "@/components/cloudbox/recent-file-item"
 import { StatsCard } from "@/components/cloudbox/stats-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
+import { cloudboxToastError } from "@/lib/cloudbox-toast"
+
+const PAGE_SIZE = 10
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState("")
+  const [listPage, setListPage] = useState(1)
+  const [detailsFile, setDetailsFile] = useState<FileRow | null>(null)
+
   const protocolsQuery = useProtocolsQuery()
   const protocols = useMemo(
     () => (protocolsQuery.data ?? ["S3", "FTP", "SMB", "NFS"]) as Protocol[],
@@ -24,6 +42,32 @@ export function DashboardPage() {
   const filesQuery = useFilesQuery(protocols, !!protocolsQuery.data)
 
   const files = Object.values(filesQuery.data ?? {}).flat()
+
+  const filteredFiles = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return files
+    return files.filter(
+      (file) =>
+        file.name.toLowerCase().includes(q) ||
+        file.path.toLowerCase().includes(q) ||
+        file.protocol.toLowerCase().includes(q)
+    )
+  }, [files, searchQuery])
+
+  const totalListPages = Math.max(
+    1,
+    Math.ceil(filteredFiles.length / PAGE_SIZE)
+  )
+  const safeListPage = Math.min(Math.max(1, listPage), totalListPages)
+
+  const paginatedFiles = useMemo(() => {
+    const start = (safeListPage - 1) * PAGE_SIZE
+    return filteredFiles.slice(start, start + PAGE_SIZE)
+  }, [filteredFiles, safeListPage])
+
+  const listRangeStart =
+    filteredFiles.length === 0 ? 0 : (safeListPage - 1) * PAGE_SIZE + 1
+  const listRangeEnd = Math.min(safeListPage * PAGE_SIZE, filteredFiles.length)
 
   const protocolStats = useMemo(
     () =>
@@ -46,7 +90,7 @@ export function DashboardPage() {
 
   const recent = files.slice(0, 4)
 
-  const handleDownload = async (file: (typeof files)[number]) => {
+  const handleDownload = async (file: FileRow) => {
     try {
       const blob = await downloadFileRequest(
         file.path || file.name,
@@ -60,6 +104,10 @@ export function DashboardPage() {
       URL.revokeObjectURL(href)
     } catch (error) {
       console.error(error)
+      cloudboxToastError(
+        "No se pudo descargar el archivo",
+        error instanceof Error ? error.message : undefined
+      )
     }
   }
 
@@ -69,10 +117,6 @@ export function DashboardPage() {
         <h1 className="font-heading text-3xl text-foreground">
           Gestor de <span className="text-primary">Activos</span>
         </h1>
-        <p className="text-sm text-slate-300">
-          Infraestructura centralizada de almacenamiento para investigación y
-          docencia.
-        </p>
       </header>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -121,15 +165,132 @@ export function DashboardPage() {
       </Card>
 
       <Card className="bg-surface-container-lowest">
-        <CardHeader>
-          <CardTitle>Listado General</CardTitle>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <CardTitle className="shrink-0">Listado General</CardTitle>
+          <div className="relative w-full max-w-md sm:min-w-[16rem]">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={searchQuery}
+              onChange={(event) => {
+                setSearchQuery(event.target.value)
+                setListPage(1)
+              }}
+              className="w-full rounded-lg border border-slate-500/40 bg-[#0f1930] py-2.5 pr-3 pl-9 text-sm text-slate-100 ring-2 ring-transparent transition outline-none focus:border-primary/60 focus:ring-primary/20"
+              placeholder="Buscar en la tabla (nombre, ruta, protocolo)..."
+              aria-label="Buscar en el listado general"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <FilesDataTable
-            rows={files.slice(0, 10)}
+            rows={paginatedFiles}
             loading={filesQuery.isLoading}
             onDownload={(file) => void handleDownload(file)}
+            onDetails={(file) => setDetailsFile(file)}
           />
+          {!filesQuery.isLoading && filteredFiles.length > 0 && (
+            <div className="mt-4 flex flex-col gap-3 border-t border-border/40 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-400">
+                Mostrando{" "}
+                <span className="font-medium text-slate-200">
+                  {listRangeStart}–{listRangeEnd}
+                </span>{" "}
+                de{" "}
+                <span className="font-medium text-slate-200">
+                  {filteredFiles.length}
+                </span>{" "}
+                archivos
+                {searchQuery.trim() ? " (filtrados)" : ""}
+              </p>
+              {totalListPages > 1 ? (
+                <Pagination>
+                  <PaginationContent className="flex-wrap justify-center sm:justify-end">
+                    <PaginationItem>
+                      <PaginationPrevious
+                        disabled={safeListPage <= 1}
+                        onClick={() =>
+                          setListPage(Math.max(1, safeListPage - 1))
+                        }
+                      />
+                    </PaginationItem>
+                    {totalListPages <= 7 ? (
+                      Array.from(
+                        { length: totalListPages },
+                        (_, i) => i + 1
+                      ).map((n) => (
+                        <PaginationItem key={n}>
+                          <PaginationLink
+                            isActive={n === safeListPage}
+                            onClick={() => setListPage(n)}
+                          >
+                            {n}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))
+                    ) : (
+                      <>
+                        <PaginationItem>
+                          <PaginationLink
+                            isActive={safeListPage === 1}
+                            onClick={() => setListPage(1)}
+                          >
+                            1
+                          </PaginationLink>
+                        </PaginationItem>
+                        {safeListPage > 3 ? (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        ) : null}
+                        {Array.from(
+                          new Set([
+                            safeListPage - 1,
+                            safeListPage,
+                            safeListPage + 1,
+                          ])
+                        )
+                          .filter((n) => n > 1 && n < totalListPages)
+                          .sort((a, b) => a - b)
+                          .map((n) => (
+                            <PaginationItem key={n}>
+                              <PaginationLink
+                                isActive={n === safeListPage}
+                                onClick={() => setListPage(n)}
+                              >
+                                {n}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                        {safeListPage < totalListPages - 2 ? (
+                          <PaginationItem>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        ) : null}
+                        <PaginationItem>
+                          <PaginationLink
+                            isActive={safeListPage === totalListPages}
+                            onClick={() => setListPage(totalListPages)}
+                          >
+                            {totalListPages}
+                          </PaginationLink>
+                        </PaginationItem>
+                      </>
+                    )}
+                    <PaginationItem>
+                      <PaginationNext
+                        disabled={safeListPage >= totalListPages}
+                        onClick={() =>
+                          setListPage(
+                            Math.min(totalListPages, safeListPage + 1)
+                          )
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              ) : null}
+            </div>
+          )}
           {filesQuery.error && (
             <p className="mt-3 text-xs text-destructive">
               {filesQuery.error.message}
@@ -137,6 +298,15 @@ export function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <FileDetailsDialog
+        open={Boolean(detailsFile)}
+        onOpenChange={(open) => {
+          if (!open) setDetailsFile(null)
+        }}
+        file={detailsFile}
+        onDownload={(file) => void handleDownload(file)}
+      />
     </section>
   )
 }

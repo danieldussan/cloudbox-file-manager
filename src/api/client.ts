@@ -38,6 +38,18 @@ export type FileRow = {
   bytes: number | null
   modified: string
   protocol: Protocol
+  lastModifiedRaw: string | null
+  extension: string | null
+  mimeType: string | null
+  etag: string | null
+  directory: boolean | null
+  bucketName: string | null
+  storageClass: string | null
+  owner: string | null
+  group: string | null
+  creationTime: string | null
+  lastAccessTime: string | null
+  allocationSize: number | null
 }
 
 type FilesByProtocol = Record<Protocol, FileRow[]>
@@ -74,6 +86,41 @@ export function formatBytesToReadable(bytes: number | null): string {
   return `${gb.toFixed(2)} GB`
 }
 
+function optionalString(value: unknown): string | null {
+  if (value === undefined || value === null) return null
+  const s = String(value).trim()
+  return s.length > 0 ? s : null
+}
+
+function optionalBool(value: unknown): boolean | null {
+  if (typeof value === "boolean") return value
+  return null
+}
+
+function optionalNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  if (typeof value === "string") {
+    const n = Number(value)
+    if (Number.isFinite(n)) return n
+  }
+  return null
+}
+
+const emptyMeta = {
+  lastModifiedRaw: null as string | null,
+  extension: null as string | null,
+  mimeType: null as string | null,
+  etag: null as string | null,
+  directory: null as boolean | null,
+  bucketName: null as string | null,
+  storageClass: null as string | null,
+  owner: null as string | null,
+  group: null as string | null,
+  creationTime: null as string | null,
+  lastAccessTime: null as string | null,
+  allocationSize: null as number | null,
+}
+
 function formatDateTimeReadable(value: unknown): string {
   if (typeof value !== "string" || !value.trim()) return "N/A"
 
@@ -105,6 +152,7 @@ function parseFilesResponse(raw: unknown): FilesByProtocol {
             if (typeof item === "object" && item) {
               const r = item as Record<string, unknown>
               const bytes = parseBytes(r.size ?? r.sizeBytes ?? r.bytes)
+              const lastMod = r.lastModified ?? r.modified
               return {
                 name: String(r.name ?? r.fileName ?? `archivo-${index + 1}`),
                 path: String(
@@ -117,8 +165,20 @@ function parseFilesResponse(raw: unknown): FilesByProtocol {
                 ),
                 size: formatBytesToReadable(bytes),
                 bytes,
-                modified: formatDateTimeReadable(r.lastModified ?? r.modified),
+                modified: formatDateTimeReadable(lastMod),
                 protocol: key,
+                lastModifiedRaw: optionalString(lastMod),
+                extension: optionalString(r.extension),
+                mimeType: optionalString(r.mimeType),
+                etag: optionalString(r.etag),
+                directory: optionalBool(r.directory),
+                bucketName: optionalString(r.bucketName),
+                storageClass: optionalString(r.storageClass),
+                owner: optionalString(r.owner),
+                group: optionalString(r.group),
+                creationTime: optionalString(r.creationTime),
+                lastAccessTime: optionalString(r.lastAccessTime),
+                allocationSize: optionalNumber(r.allocationSize),
               }
             }
 
@@ -129,6 +189,7 @@ function parseFilesResponse(raw: unknown): FilesByProtocol {
               bytes: null,
               modified: "N/A",
               protocol: key,
+              ...emptyMeta,
             }
           })
         } else {

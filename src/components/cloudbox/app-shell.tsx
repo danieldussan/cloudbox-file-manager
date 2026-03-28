@@ -68,7 +68,7 @@ export function AppShell() {
             <p className="truncate text-xs font-semibold text-white">
               {username}
             </p>
-            <p className="text-[10px] text-slate-400">Usuario Universitario</p>
+            <p className="text-[10px] text-slate-400">Usuario</p>
           </div>
           <Button
             variant="ghost"
@@ -88,7 +88,7 @@ export function AppShell() {
         <header className="sticky top-0 z-20 border-b border-border/40 bg-background/70 backdrop-blur">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
             <h2 className="hidden text-sm text-muted-foreground md:block">
-              Plataforma de almacenamiento universitario
+              Plataforma de almacenamiento
             </h2>
             <div />
           </div>

@@ -6,16 +6,20 @@ import { useFilesQuery } from "@/api/hooks"
 import {
   downloadFileRequest,
   formatBytesToReadable,
+  type FileRow,
   type Protocol,
 } from "@/api/client"
+import { FileDetailsDialog } from "@/components/cloudbox/file-details-dialog"
 import { FilesDataTable } from "@/components/cloudbox/files-data-table"
-import { Badge } from "@/components/ui/badge"
+import { ProtocolBadge } from "@/components/cloudbox/protocol-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { cloudboxToastError } from "@/lib/cloudbox-toast"
 
 const validProtocols: Protocol[] = ["S3", "FTP", "SMB", "NFS"]
 
 export function DetailPage() {
   const [query, setQuery] = useState("")
+  const [detailsFile, setDetailsFile] = useState<FileRow | null>(null)
   const { protocol } = useParams({ from: "/app-layout/details/$protocol" })
   const normalized = (
     validProtocols.includes(protocol as Protocol) ? protocol : "S3"
@@ -44,13 +48,21 @@ export function DetailPage() {
   )
 
   const handleDownload = async (filePath: string, fileName: string) => {
-    const blob = await downloadFileRequest(filePath, normalized)
-    const href = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = href
-    a.download = fileName
-    a.click()
-    URL.revokeObjectURL(href)
+    try {
+      const blob = await downloadFileRequest(filePath, normalized)
+      const href = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = href
+      a.download = fileName
+      a.click()
+      URL.revokeObjectURL(href)
+    } catch (error) {
+      console.error(error)
+      cloudboxToastError(
+        "No se pudo descargar el archivo",
+        error instanceof Error ? error.message : undefined
+      )
+    }
   }
 
   return (
@@ -68,7 +80,7 @@ export function DetailPage() {
       <Card className="bg-surface-container-low">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Archivos en {normalized}</CardTitle>
-          <Badge>{normalized}</Badge>
+          <ProtocolBadge protocol={normalized} />
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -88,9 +100,21 @@ export function DetailPage() {
             onDownload={(file) =>
               void handleDownload(file.path || file.name, file.name)
             }
+            onDetails={(file) => setDetailsFile(file)}
           />
         </CardContent>
       </Card>
+
+      <FileDetailsDialog
+        open={Boolean(detailsFile)}
+        onOpenChange={(open) => {
+          if (!open) setDetailsFile(null)
+        }}
+        file={detailsFile}
+        onDownload={(file) =>
+          void handleDownload(file.path || file.name, file.name)
+        }
+      />
     </section>
   )
 }

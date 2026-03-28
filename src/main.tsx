@@ -5,6 +5,7 @@ import { RouterProvider } from "@tanstack/react-router"
 
 import { queryClient } from "@/api/query-client"
 import { router } from "@/router"
+import { Toaster } from "@/components/ui/sonner"
 
 import "./index.css"
 
@@ -12,6 +13,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
+      <Toaster />
     </QueryClientProvider>
   </StrictMode>
 )
