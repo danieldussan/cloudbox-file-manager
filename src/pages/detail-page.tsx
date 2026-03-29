@@ -2,28 +2,45 @@ import { useMemo, useState } from "react"
 import { Search } from "lucide-react"
 import { useParams } from "@tanstack/react-router"
 
-import { useFilesQuery } from "@/api/hooks"
+import {
+  useDeleteFileMutation,
+  useFilesQuery,
+  useMoveFileMutation,
+  useProtocolsQuery,
+} from "@/api/hooks"
 import {
   downloadFileRequest,
   formatBytesToReadable,
   type FileRow,
   type Protocol,
 } from "@/api/client"
+import { DeleteFileDialog } from "@/components/cloudbox/delete-file-dialog"
 import { FileDetailsDialog } from "@/components/cloudbox/file-details-dialog"
+import { MoveFileDialog } from "@/components/cloudbox/move-file-dialog"
 import { FilesDataTable } from "@/components/cloudbox/files-data-table"
 import { ProtocolBadge } from "@/components/cloudbox/protocol-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { cloudboxToastError } from "@/lib/cloudbox-toast"
+import { cloudboxToastError, cloudboxToastSuccess } from "@/lib/cloudbox-toast"
 
 const validProtocols: Protocol[] = ["S3", "FTP", "SMB", "NFS"]
 
 export function DetailPage() {
   const [query, setQuery] = useState("")
   const [detailsFile, setDetailsFile] = useState<FileRow | null>(null)
+  const [fileToDelete, setFileToDelete] = useState<FileRow | null>(null)
+  const [fileToMove, setFileToMove] = useState<FileRow | null>(null)
   const { protocol } = useParams({ from: "/app-layout/details/$protocol" })
   const normalized = (
     validProtocols.includes(protocol as Protocol) ? protocol : "S3"
   ) as Protocol
+
+  const protocolsQuery = useProtocolsQuery()
+  const allProtocols = useMemo(
+    () => (protocolsQuery.data ?? validProtocols) as Protocol[],
+    [protocolsQuery.data]
+  )
+  const deleteMutation = useDeleteFileMutation()
+  const moveMutation = useMoveFileMutation()
 
   const filesQuery = useFilesQuery([normalized])
   const files = useMemo(
@@ -65,6 +82,41 @@ export function DetailPage() {
     }
   }
 
+  const handleConfirmDelete = async () => {
+    if (!fileToDelete) return
+    try {
+      await deleteMutation.mutateAsync({
+        path: fileToDelete.path || fileToDelete.name,
+        protocol: fileToDelete.protocol,
+      })
+      cloudboxToastSuccess("Archivo eliminado", fileToDelete.name)
+      setFileToDelete(null)
+    } catch (error) {
+      cloudboxToastError(
+        "No se pudo eliminar el archivo",
+        error instanceof Error ? error.message : undefined
+      )
+    }
+  }
+
+  const handleConfirmMove = async (to: Protocol) => {
+    if (!fileToMove) return
+    try {
+      await moveMutation.mutateAsync({
+        path: fileToMove.path || fileToMove.name,
+        from: fileToMove.protocol,
+        to,
+      })
+      cloudboxToastSuccess("Archivo movido", `${fileToMove.name} → ${to}`)
+      setFileToMove(null)
+    } catch (error) {
+      cloudboxToastError(
+        "No se pudo mover el archivo",
+        error instanceof Error ? error.message : undefined
+      )
+    }
+  }
+
   return (
     <section className="space-y-6">
       <header className="space-y-2">
@@ -101,6 +153,8 @@ export function DetailPage() {
               void handleDownload(file.path || file.name, file.name)
             }
             onDetails={(file) => setDetailsFile(file)}
+            onDelete={(file) => setFileToDelete(file)}
+            onMove={(file) => setFileToMove(file)}
           />
         </CardContent>
       </Card>
@@ -114,6 +168,30 @@ export function DetailPage() {
         onDownload={(file) =>
           void handleDownload(file.path || file.name, file.name)
         }
+      />
+
+      <DeleteFileDialog
+        open={Boolean(fileToDelete)}
+        onOpenChange={(open) => {
+          if (!open) setFileToDelete(null)
+        }}
+        file={fileToDelete}
+        isPending={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <MoveFileDialog
+        key={
+          fileToMove ? `${fileToMove.path}-${fileToMove.protocol}` : "move-idle"
+        }
+        open={Boolean(fileToMove)}
+        onOpenChange={(open) => {
+          if (!open) setFileToMove(null)
+        }}
+        file={fileToMove}
+        availableProtocols={allProtocols}
+        isPending={moveMutation.isPending}
+        onConfirm={handleConfirmMove}
       />
     </section>
   )

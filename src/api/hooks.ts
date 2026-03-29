@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import {
+  deleteFileRequest,
   getAvailableProtocolsRequest,
   listFilesRequest,
   loginRequest,
+  moveFileRequest,
   registerRequest,
   uploadFilesRequest,
   type AuthRequest,
@@ -69,6 +71,39 @@ export function useUploadFilesMutation() {
       files: File[]
       protocols: Protocol[]
     }) => uploadFilesRequest(files, protocols),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.protocols })
+      void queryClient.invalidateQueries({ queryKey: ["files"] })
+    },
+  })
+}
+
+export function useDeleteFileMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ path, protocol }: { path: string; protocol: Protocol }) =>
+      deleteFileRequest(path, protocol),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.protocols })
+      void queryClient.invalidateQueries({ queryKey: ["files"] })
+    },
+  })
+}
+
+export function useMoveFileMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      path,
+      from,
+      to,
+    }: {
+      path: string
+      from: Protocol
+      to: Protocol
+    }) => moveFileRequest(path, from, to),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.protocols })
       void queryClient.invalidateQueries({ queryKey: ["files"] })

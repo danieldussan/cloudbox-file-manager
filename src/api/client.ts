@@ -110,11 +110,7 @@ export function formatEtagForDisplay(raw: string | null | undefined): string {
     const asciiSingle = a === "'" && b === "'"
     const curly = a === "\u201c" && b === "\u201d"
     if (!asciiDouble && !asciiSingle && !curly) return null
-    return t
-      .slice(1, -1)
-      .replaceAll('\\"', '"')
-      .replaceAll("\\'", "'")
-      .trim()
+    return t.slice(1, -1).replaceAll('\\"', '"').replaceAll("\\'", "'").trim()
   }
 
   let peeled: string | null
@@ -360,4 +356,61 @@ export async function downloadFileRequest(
   }
 
   return response.blob()
+}
+
+async function errorMessageFromResponse(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  try {
+    const problem = (await response.json()) as {
+      title?: string
+      detail?: string
+    }
+    return problem.detail ?? problem.title ?? fallback
+  } catch {
+    return fallback
+  }
+}
+
+export async function deleteFileRequest(filePath: string, protocol: Protocol) {
+  const params = new URLSearchParams({
+    path: filePath,
+    protocol,
+  })
+  const response = await fetch(`${baseUrl}/api/v1/files?${params.toString()}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  })
+
+  if (!response.ok) {
+    throw new Error(
+      await errorMessageFromResponse(response, "No se pudo eliminar el archivo")
+    )
+  }
+}
+
+export async function moveFileRequest(
+  filePath: string,
+  from: Protocol,
+  to: Protocol
+) {
+  const params = new URLSearchParams({
+    path: filePath,
+    from,
+    to,
+  })
+  const response = await fetch(
+    `${baseUrl}/api/v1/files/move?${params.toString()}`,
+    {
+      method: "POST",
+      headers: authHeaders(),
+    }
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      await errorMessageFromResponse(response, "No se pudo mover el archivo")
+    )
+  }
 }

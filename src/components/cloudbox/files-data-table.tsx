@@ -1,4 +1,4 @@
-import { Download, Info } from "lucide-react"
+import { ArrowRightLeft, Download, Info, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -20,6 +20,8 @@ type FilesDataTableProps = {
   loading?: boolean
   onDownload?: (row: FileRow) => void
   onDetails?: (row: FileRow) => void
+  onDelete?: (row: FileRow) => void
+  onMove?: (row: FileRow) => void
 }
 
 export function FilesDataTable({
@@ -27,6 +29,8 @@ export function FilesDataTable({
   loading,
   onDownload,
   onDetails,
+  onDelete,
+  onMove,
 }: FilesDataTableProps) {
   return (
     <Table>
@@ -76,8 +80,8 @@ export function FilesDataTable({
             <TableCell className="max-w-56 truncate text-slate-300">
               {file.modified}
             </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
+            <TableCell className="min-w-[9.5rem]">
+              <div className="flex flex-wrap items-center gap-0.5">
                 {onDetails ? (
                   <Button
                     size="icon-sm"
@@ -98,6 +102,28 @@ export function FilesDataTable({
                 >
                   <Download className="size-4" />
                 </Button>
+                {onMove ? (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={() => onMove(file)}
+                    className="hover:bg-primary/20"
+                    aria-label={`Mover ${file.name}`}
+                  >
+                    <ArrowRightLeft className="size-4" />
+                  </Button>
+                ) : null}
+                {onDelete ? (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    onClick={() => onDelete(file)}
+                    className="text-destructive hover:bg-destructive/20"
+                    aria-label={`Eliminar ${file.name}`}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                ) : null}
               </div>
             </TableCell>
           </TableRow>

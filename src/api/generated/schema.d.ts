@@ -22,6 +22,30 @@ export interface paths {
      * @description Uploads multiple files and distributes them across the specified storage protocols. Each file can be sent to multiple backends simultaneously.
      */
     post: operations["uploadFile"]
+    /**
+     * Delete a file
+     * @description Permanently deletes a file from the specified storage backend given its path.
+     */
+    delete: operations["deleteFile"]
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/v1/files/move": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Move a file between protocols
+     * @description Downloads a file from the source protocol, uploads it to the destination protocol, and deletes it from the source.
+     */
+    post: operations["moveFile"]
     delete?: never
     options?: never
     head?: never
@@ -62,6 +86,26 @@ export interface paths {
      * @description Authenticates a user using their username and password. If credentials are valid, returns a JWT token for use in subsequent API calls.
      */
     post: operations["login"]
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  "/api/v1/files/usage": {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Get storage usage
+     * @description Retrieves the total and per-protocol storage space consumed by the authenticated user.
+     */
+    get: operations["getUsedSpace"]
+    put?: never
+    post?: never
     delete?: never
     options?: never
     head?: never
@@ -159,6 +203,19 @@ export interface components {
        * @example eyJhbGciOiJIUzI1NiJ9...
        */
       token?: string
+    }
+    /** @description Response containing storage usage metrics for a user */
+    StorageUsageResponse: {
+      /**
+       * Format: int64
+       * @description Total bytes consumed across all requested protocols
+       * @example 11534336
+       */
+      totalBytes?: number
+      /** @description Breakdown of bytes consumed per protocol */
+      byProtocol?: {
+        [key: string]: number
+      }
     }
   }
   responses: never
@@ -273,6 +330,120 @@ export interface operations {
       }
     }
   }
+  deleteFile: {
+    parameters: {
+      query: {
+        /**
+         * @description Relative path of the file to delete
+         * @example userId/document.pdf
+         */
+        path: string
+        /**
+         * @description Storage protocol where the file resides
+         * @example S3
+         */
+        protocol: "S3" | "FTP" | "SMB" | "NFS"
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description File deleted successfully */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Bad Request: Invalid path or protocol */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "*/*": components["schemas"]["ProblemDetail"]
+        }
+      }
+      /** @description Not Found: The file does not exist at the specified path */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "*/*": components["schemas"]["ProblemDetail"]
+        }
+      }
+      /** @description Internal Server Error during deletion */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "*/*": components["schemas"]["ProblemDetail"]
+        }
+      }
+    }
+  }
+  moveFile: {
+    parameters: {
+      query: {
+        /** @description Relative path of the file to move (e.g. userId/filename.pdf) */
+        path: string
+        /**
+         * @description Source storage protocol
+         * @example FTP
+         */
+        from: "S3" | "FTP" | "SMB" | "NFS"
+        /**
+         * @description Destination storage protocol
+         * @example S3
+         */
+        to: "S3" | "FTP" | "SMB" | "NFS"
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description File moved successfully */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Bad Request: Invalid path or protocol */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "*/*": components["schemas"]["ProblemDetail"]
+        }
+      }
+      /** @description Not Found: The file does not exist at the specified path in the source protocol */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "*/*": components["schemas"]["ProblemDetail"]
+        }
+      }
+      /** @description Internal Server Error during move operation */
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "*/*": components["schemas"]["ProblemDetail"]
+        }
+      }
+    }
+  }
   register: {
     parameters: {
       query?: never
@@ -357,6 +528,59 @@ export interface operations {
       }
       /** @description Unauthorized: Invalid username or password provided */
       401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "*/*": components["schemas"]["ProblemDetail"]
+        }
+      }
+    }
+  }
+  getUsedSpace: {
+    parameters: {
+      query: {
+        /**
+         * @description Set of storage protocols to query for usage
+         * @example S3,FTP
+         */
+        protocols: ("S3" | "FTP" | "SMB" | "NFS")[]
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Storage usage retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "*/*": components["schemas"]["StorageUsageResponse"]
+        }
+      }
+      /** @description Bad Request: One or more requested protocols are invalid */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "*/*": components["schemas"]["ProblemDetail"]
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          "*/*": components["schemas"]["ProblemDetail"]
+        }
+      }
+      /** @description Internal Server Error */
+      500: {
         headers: {
           [name: string]: unknown
         }
